@@ -1,23 +1,30 @@
 <template>
+  <Loader v-if="showLoading"/>
   <div class="container">
-    <h1>{{ editData?.id ? 'Edit Resource' : 'Create Resource' }}</h1>
+    <h1>{{ editData?.id ? "Edit Resource" : "Create Resource" }}</h1>
     <form @submit.prevent="submitForm">
       <div>
         <label for="userId">User ID:</label>
-        <input type="number" id="userId" v-model="formData.userId" required />
+        <input
+          type="number"
+          id="userId"
+          v-model="resourceFormData.userId"
+          required
+        />
       </div>
       <div>
         <label for="title">Title:</label>
-        <input type="text" id="title" v-model="formData.title" required />
+        <input
+          type="text"
+          id="title"
+          v-model="resourceFormData.title"
+          required
+        />
       </div>
       <div>
-        <label for="description">Description:</label>
-        <textarea
-          id="description"
-          v-model="formData.description"
-          required
-        ></textarea>
-        <button v-if="editData?.id " type="submit">Update Resource</button>
+        <label for="body">Description:</label>
+        <textarea id="body" v-model="resourceFormData.body" required></textarea>
+        <button v-if="editData?.id" type="submit">Update Resource</button>
         <button v-if="!editData.id" type="submit">Create Resource</button>
       </div>
     </form>
@@ -26,60 +33,36 @@
 
 <script>
 /* eslint-disable */
+import { mapState } from "vuex";
+import Loader from "./loader.vue";
+
 export default {
-  props: ['editData'],
-  data() {
-    return {
-      formData: {
-        userId: null,
-        title: '',
-        description: '',
-      },
-    }
+  props: ["editData"],
+  components: {
+    Loader,
   },
+  computed: {
+    ...mapState(["resourceFormData", "setResourceFormData", "showLoading"]),
+  },
+  data() {},
   methods: {
     async submitForm() {
-      if (this.editData?.id) {
-        const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${this.editData.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(this.formData),
-        })
-        if (response.ok) {
-          window.alert('Resource updated successfully!');
-          this.$emit('updated', this.formData)
-        }
-      } else {
-        const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(this.formData),
-        })
-        if (response.ok) {
-          window.alert('Resource added successfully!');
-          this.formData = {
-            userId: null,
-            title: '',
-            description: '',
-          }
-        }
+      const isUpdate = this.editData?.id ? true : false;
+      const isSaved = await this.$store.dispatch(
+        "submitFormData",
+        isUpdate
+      );
+      if (isSaved) {
+        this.$emit("onSuccess");
       }
-    }
+    },
   },
   mounted() {
     if (this.editData) {
-      this.formData = {
-        userId: this.editData.userId,
-        title: this.editData.title,
-        description: this.editData.body,
-      }
+      this.$store.dispatch("setResourceFormData", this.editData);
     }
   },
-}
+};
 </script>
 <style scoped>
 h1 {
@@ -89,7 +72,8 @@ form {
   width: 50%;
   text-align: left;
 }
-input, textarea  {
+input,
+textarea {
   width: 100%;
   padding: 12px 20px;
   margin: 8px 0;
@@ -112,11 +96,5 @@ button {
 
 input[type="submit"]:hover {
   background-color: #45a049;
-}
-
-div {
-  border-radius: 5px;
-  background-color: #f2f2f2;
-  padding: 5px;
 }
 </style>

@@ -1,21 +1,22 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createApp } from "vue";
+import App from "./App.vue";
+import { createRouter, createWebHistory } from "vue-router";
+import store from "./store";
 
 const routes = [
   {
-    path: '/:catchAll(.*)',
-    redirect: '/dashboard'
+    path: "/home",
+    component: () => import("@/App.vue"),
   },
   {
-    path: '/dashboard',
-    component: () => import('@/App.vue')
-  }
-]
+    path: "/:catchAll(.*)",
+    redirect: "/home",
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
-createApp(App).use(router).mount('#app')
+createApp(App).use(router).use(store).mount("#app");

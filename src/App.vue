@@ -1,8 +1,6 @@
 <template>
   <AppHeader />
   <HomeCards/>
-  <!-- <ResourceList v-if="showCreateResource == false"/>
-  <CreateResource v-if="showCreateResource"/> -->
   <AppFooter />
 </template>
 

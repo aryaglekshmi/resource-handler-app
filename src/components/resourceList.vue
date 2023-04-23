@@ -82,7 +82,7 @@ export default {
       resources: [],
       currentPage: 1,
       itemsPerPage: 5,
-      totalResources: 0,
+      totalResourcesLength: 0,
       showLoading: true,
       pageCount: 0,
     };
@@ -90,7 +90,7 @@ export default {
 
   computed: {
     pageCount() {
-      return Math.ceil(this.totalResources / this.itemsPerPage);
+      return Math.ceil(this.totalResourcesLength / this.itemsPerPage);
     },
   },
   methods: {
@@ -102,7 +102,7 @@ export default {
         const data = await response.json();
         this.resources = data;
         this.currentPage = pageNumber;
-        this.totalResources =
+        this.totalResourcesLength =
           parseInt(response.headers.get("x-total-count")) || 0;
       } catch (error) {
         console.error(error);
@@ -134,7 +134,6 @@ export default {
         })
         .then((data) => {
           this.resources = this.resources.filter((el) => el.id != id);
-          console.log(this.resources);
           window.alert("Resource deleted successfully!");
         })
         .catch((error) => {
@@ -177,11 +176,6 @@ export default {
 .link:hover {
   text-decoration: underline;
 }
-
-.load-more:hover {
-  opacity: 0.8;
-}
-
 .container {
   margin: 0 10px;
   overflow-y: auto;

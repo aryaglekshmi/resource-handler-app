@@ -1,106 +1,151 @@
-import Vue from "vue";
-import Vuex from "vuex";
+/* eslint-disable */
 
-Vue.use(Vuex);
+import { createStore } from "vuex";
+import axios from "axios";
 
-const store = new Vuex.Store({
+const store = createStore({
   state: {
     resources: [],
+    currentPage: 1,
+    totalResourcesLength: 0,
+    showLoading: false,
+    itemsPerPage: 5,
+    allResources: [],
+    resourceFormData: {
+      userId: null,
+      title: "",
+      body: "",
+      id: null
+    },
   },
   getters: {
-    resources(state) {
-      return state.resources;
-    },
-    totalResources(state) {
-      return state.resources.totalResources;
+    pageCount: (state) => {
+      return Math.ceil(state.totalResourcesLength / state.itemsPerPage);
     },
   },
   mutations: {
-    addResource(state, resource) {
-      state.resources.push(resource);
+    SET_RESOURCES(state, resources) {
+      state.allResources = resources;
+      state.totalResourcesLength = resources.length;
     },
-    updateResource(state, updatedResource) {
-      const index = state.resources.findIndex(
-        (resource) => resource.id === updatedResource.id
-      );
-      if (index !== -1) {
-        Vue.set(state.resources, index, updatedResource);
-      }
+    SET_CURRENT_PAGE(state, page) {
+      state.currentPage = page;
     },
-    deleteResource(state, resourceId) {
-      state.resources = state.resources.filter(
-        (resource) => resource.id !== resourceId
-      );
-    },
-    setResources(state, resources) {
+    SET_RESOURCES_TO_DISPLAY(state, resources) {
       state.resources = resources;
+    },
+    resources(state, total) {
+      state.totalResourcesLength = total;
+    },
+    SET_LOADING(state, value) {
+      state.showLoading = value;
+    },
+    DELETE_RESOURCE(state, id) {
+      state.allResources = state.allResources.filter((el) => el.id != id);
+      state.totalResourcesLength = state.allResources.length;
+    },
+    SET_RESOURCES_FORM_DATA(state, resourceFormData) {
+      state.resourceFormData = resourceFormData;
     },
   },
   actions: {
-    async createResource({ commit }, resourceData) {
-      const response = await fetch(
-        "https://jsonplaceholder.typicode.com/posts",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(resourceData),
+    async fetchAllResources({ state, dispatch, commit }) {
+      if (!state.totalResourcesLength > 0) {
+        try {
+          commit("SET_LOADING", true);
+          const response = await axios.get(
+            `https://jsonplaceholder.typicode.com/posts`
+          );
+          commit("SET_RESOURCES", response.data);
+          commit("SET_TOTAL_RESOURCES_LENGTH", response.data.length);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          commit("SET_LOADING", false);
         }
-      );
-      if (response.ok) {
-        const newResource = await response.json();
-        commit("addResource", newResource);
-        return newResource;
-      } else {
-        throw new Error("Failed to create resource");
+      }
+      dispatch("paginateResources", 1);
+    },
+
+    paginateResources({ commit, state }, pageNumber) {
+      commit("SET_CURRENT_PAGE", pageNumber);
+      const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+      const endIndex = startIndex + state.itemsPerPage;
+      if (state?.allResources?.length) {
+        commit(
+          "SET_RESOURCES_TO_DISPLAY",
+          state.allResources.slice(startIndex, endIndex)
+        );
       }
     },
-    async updateResource({ commit }, { resourceId, resourceData }) {
-      const response = await fetch(
-        `https://jsonplaceholder.typicode.com/posts/${resourceId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(resourceData),
+
+    async deleteResource({ commit, dispatch, state }, id) {
+      commit("SET_LOADING", true);
+      try {
+        const response = await axios.delete(
+          `https://jsonplaceholder.typicode.com/posts/${id}`
+        );
+        if (response.status !== 200) {
+          throw new Error("Failed to delete resource");
         }
-      );
-      if (response.ok) {
-        const updatedResource = await response.json();
-        commit("updateResource", updatedResource);
-        return updatedResource;
-      } else {
-        throw new Error("Failed to update resource");
+        commit("DELETE_RESOURCE", id);
+        window.alert("Resource deleted successfully!");
+        dispatch("paginateResources", state.currentPage);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        commit("SET_LOADING", false);
       }
     },
-    async deleteResource({ commit }, resourceId) {
-      const response = await fetch(
-        `https://jsonplaceholder.typicode.com/posts/${resourceId}`,
-        {
-          method: "DELETE",
+
+    async submitFormData({ state, commit, dispatch }, editMode) {
+      commit("SET_LOADING", true);
+      if (!state.allResources.length) {
+        await dispatch("fetchAllResources");
+      }
+      try {
+        let response;
+        if (editMode) {
+          response = await axios.put(
+            `https://jsonplaceholder.typicode.com/posts/${state.resourceFormData.id}`,
+            state.resourceFormData
+          );
+        } else {
+          response = await axios.post(
+            "https://jsonplaceholder.typicode.com/posts",
+            state.resourceFormData
+          );
         }
-      );
-      if (response.ok) {
-        commit("deleteResource", resourceId);
-      } else {
-        throw new Error("Failed to delete resource");
+        if (response.status === 201 || response.status === 200) {
+          const resource = response.data;
+          const index = state.allResources.findIndex(
+            (el) => el.id === resource.id
+          );
+          let ModifiedAllResources = state.allResources;
+          if (index >= 0) {
+            state.allResources.splice(index, 1, resource);
+          } else {
+            state.allResources.push(resource);
+          }
+          ModifiedAllResources = state.allResources;
+          commit("SET_RESOURCES", ModifiedAllResources);
+          commit("SET_RESOURCES_FORM_DATA", {
+            userId: null,
+            title: "",
+            body: "",
+          });
+          return true;
+        }
+      } catch (error) {
+        console.error(error);
+        window.alert("Failed to save resource");
+        return false;
+      } finally {
+        commit("SET_LOADING", false);
       }
     },
-    async fetchResources({ commit }, { page = 1, pageSize = 5 } = {}) {
-      const start = (page - 1) * pageSize;
-      const response = await fetch(
-        `https://jsonplaceholder.typicode.com/posts?_start=${start}&_limit=${pageSize}`
-      );
-      if (response.ok) {
-        const resources = await response.json();
-        const total = response.headers.get("x-total-count");
-        commit("setResources", { resources, total });
-        return { resources, total };
-      } else {
-        throw new Error("Failed to fetch resources");
-      }
+    setResourceFormData({ state, commit }, editData) {
+      commit("SET_RESOURCES_FORM_DATA", editData);
     },
   },
 });
